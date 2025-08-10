@@ -1,0 +1,638 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst body = item.json.body?.Body || \"\";\nconst from = item.json.body?.From || \"\";\n\n// Extract command (first word)\nconst firstSpaceIndex = body.indexOf(' ');\nlet command = \"\";\nlet argString = \"\";\n\nif (firstSpaceIndex === -1) {\n  command = body.toUpperCase();\n} else {\n  command = body.substring(0, firstSpaceIndex).toUpperCase();\n  argString = body.substring(firstSpaceIndex + 1).trim();\n}\n\n// Args array has one element: the full argument string\nconst args = argString ? [argString] : [];\n\nreturn [\n  {\n    json: {\n      rawMessage: body,\n      fromNumber: from,\n      command,\n      argString,\n      args,\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        32
+      ],
+      "id": "1959a6ba-78ca-4a4f-95ff-233ba02534fc",
+      "name": "ParseMessage"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook/whatsapp",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -368,
+        32
+      ],
+      "id": "831ed320-bbf7-4918-951e-d531e11bfb06",
+      "name": "Webhook_WhatsApp_Incoming",
+      "webhookId": "8c67d39a-783f-4a69-840e-4a7a3049b1ec"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.command}}",
+                    "rightValue": "LIST",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "045cf041-65f2-47ed-9ea9-a2711c678034"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Output 1 → LIST"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ffa2cd24-234f-414c-bf4e-cde51bf60962",
+                    "leftValue": "={{$json.command}}",
+                    "rightValue": "DELETE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Output 2 → DELETE"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "71d951ff-308a-48cb-a2a4-4d36d22f1693",
+                    "leftValue": "={{$json.command}}",
+                    "rightValue": "MOVE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Output 3 → MOVE"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "98954ef1-4850-46fc-a186-2dbce4a84b08",
+                    "leftValue": "={{$json.command}}",
+                    "rightValue": "SUMMARY",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Output 4 → SUMMARY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        272,
+        -16
+      ],
+      "id": "471d4108-ad1a-4073-8a48-12ab62463526",
+      "name": "SwitchCommand"
+    },
+    {
+      "parameters": {
+        "jsCode": "const files = $items('DriveList');\n\nif (!files || files.length === 0) {\n  return [{ json: { Body: \"No files found in the folder.\" } }];\n}\n\nconst fileListText = files.map(item => `- ${item.json.name}`).join('\\r\\n');\n\nreturn [{ json: { Body: `Files in folder:\\r\\n${fileListText}` } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -160
+      ],
+      "id": "59adc75b-620d-430a-9aec-03eb18456340",
+      "name": "FormatList"
+    },
+    {
+      "parameters": {
+        "from": "whatsapp:+14155238886",
+        "to": "whatsapp:+917842478570",
+        "toWhatsapp": true,
+        "message": "={{ $node[\"FormatList\"].json[\"Body\"] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        -160
+      ],
+      "id": "75af029c-4d14-4e9d-ad20-c9121c9d4830",
+      "name": "Twilio_SendMessage",
+      "credentials": {
+        "twilioApi": {
+          "id": "8xPPB5xSwJ09SdaJ",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1XlDqOlB49UjKsD6QAX_0AzjcNEQ2ZhUQ",
+            "mode": "list",
+            "cachedResultName": "WhatsApp-Driven Google Drive Assistant (n8n  workflow)",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1XlDqOlB49UjKsD6QAX_0AzjcNEQ2ZhUQ"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        640,
+        -128
+      ],
+      "id": "e6a932dd-a397-4fa9-a5f7-da9264b74aa8",
+      "name": "DriveList",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "FKyamYCdk0mfStA2",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "deleteFile",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$json[\"fileId\"]}}",
+          "mode": "id"
+        },
+        "options": {
+          "deletePermanently": true
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        976,
+        128
+      ],
+      "id": "53be752e-cd36-440c-8bda-df0ea7c23aef",
+      "name": "DriveDelete",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "FKyamYCdk0mfStA2",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const args = $json.args || [];\nif (args.length === 0) {\n  throw new Error(\"Filename not provided!\");\n}\n\n// Determine which argument contains the filename (for MOVE/DELETE commands, it's args[1])\nlet fileArgIndex = 0;\n\nif (args[0].toUpperCase() === \"MOVE\" || args[0].toUpperCase() === \"DELETE\") {\n  if (args.length < 2) {\n    throw new Error(`Filename argument missing for ${args[0]} command.`);\n  }\n  fileArgIndex = 1;\n}\n\nconst fullInput = args[fileArgIndex];\nconst filenameToDelete = fullInput.split('/').filter(Boolean).pop();\n\nif (!filenameToDelete) {\n  throw new Error(\"Could not extract filename from input.\");\n}\n\nconst inputItems = $input.all();\n\nlet matchedFileId = null;\n\n// Exact match first (case insensitive)\nfor (const item of inputItems) {\n  const fileName = item.json.name;\n  if (fileName && fileName.toLowerCase() === filenameToDelete.toLowerCase()) {\n    matchedFileId = item.json.id;\n    break;\n  }\n}\n\n// Partial match fallback\nif (!matchedFileId) {\n  for (const item of inputItems) {\n    const fileName = item.json.name;\n    if (fileName && fileName.toLowerCase().includes(filenameToDelete.toLowerCase())) {\n      matchedFileId = item.json.id;\n      break;\n    }\n  }\n}\n\nif (!matchedFileId) {\n  throw new Error(`File matching \"${filenameToDelete}\" not found.`);\n}\n\nreturn [{ json: { fileId: matchedFileId } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        144
+      ],
+      "id": "26af8f8e-4bba-47f9-ba61-ad4d15cf3211",
+      "name": "FindFileID"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Assume previous node (DriveDelete) output includes success info or fileId deleted.\nconst deletedFileId = $json[\"fileId\"] || null;\n\nif (!deletedFileId) {\n  return [{ json: { message: \"File deletion failed or no file ID found.\" } }];\n}\n\nreturn [{ json: { message: `File deleted successfully (ID: ${deletedFileId}).` } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        128
+      ],
+      "id": "e5c226f3-f82f-4678-a998-ab5de682a678",
+      "name": "FormatDeleteResponse"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1XlDqOlB49UjKsD6QAX_0AzjcNEQ2ZhUQ",
+            "mode": "list",
+            "cachedResultName": "WhatsApp-Driven Google Drive Assistant (n8n  workflow)",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1XlDqOlB49UjKsD6QAX_0AzjcNEQ2ZhUQ"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        512,
+        32
+      ],
+      "id": "0ae7c6f8-a1fa-4e86-af9f-d464b2bb791e",
+      "name": "DriveList1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "FKyamYCdk0mfStA2",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        672,
+        176
+      ],
+      "id": "b53779b6-ff02-4c74-b223-1a31642cb742",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1XlDqOlB49UjKsD6QAX_0AzjcNEQ2ZhUQ",
+            "mode": "list",
+            "cachedResultName": "WhatsApp-Driven Google Drive Assistant (n8n  workflow)",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1XlDqOlB49UjKsD6QAX_0AzjcNEQ2ZhUQ"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        496,
+        336
+      ],
+      "id": "529c8c1d-814d-4b19-8b3f-f5616de40884",
+      "name": "DriveListSource",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "FKyamYCdk0mfStA2",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1aGFKavbIeQcQCiv2hvIWJU_ny79KIFjS",
+            "mode": "list",
+            "cachedResultName": "test",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1aGFKavbIeQcQCiv2hvIWJU_ny79KIFjS"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        496,
+        512
+      ],
+      "id": "0d10408a-5638-4938-aa35-ec727b952d31",
+      "name": "DriveListDestFolder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "FKyamYCdk0mfStA2",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        816,
+        384
+      ],
+      "id": "90dafca1-9e42-4a39-93ab-a94eaf30509d",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Inputs from merged node:\n// - files (from source folder) with keys: id, name\n// - folders (from destination folder list) with keys: id, name\n\nconst input = items[0].json;\n\n// Expected:\n// input.args = [\"MOVE\", \"/ProjectX/report.pdf\", \"/Archive\"]\n// input.files = [ { id, name }, ... ]  // from DriveListSourceFolder\n// input.folders = [ { id, name }, ... ] // from DriveListDestFolder\n\nconst args = input.args || [];\n\n// Validate args\nif (args.length < 3) {\n  throw new Error(\"Insufficient arguments for MOVE command.\");\n}\n\nconst sourceFilePath = args[1];  // e.g. \"/ProjectX/report.pdf\"\nconst destFolderName = args[2];  // e.g. \"/Archive\"\n\n// Normalize input (strip leading slashes)\nconst sourceFileName = sourceFilePath.split(\"/\").filter(Boolean).pop();\nconst destFolderCleanName = destFolderName.replace(/^\\//, \"\");\n\nif (!sourceFileName) {\n  throw new Error(\"Source filename not found in path.\");\n}\n\n// Find file ID from files list by exact name match (case insensitive)\nconst files = input.files || [];\nconst fileItem = files.find(f => f.name.toLowerCase() === sourceFileName.toLowerCase());\n\nif (!fileItem) {\n  throw new Error(`File \"${sourceFileName}\" not found in source folder.`);\n}\n\n// Find destination folder ID by exact name match (case insensitive)\nconst folders = input.folders || [];\nconst destFolderItem = folders.find(f => f.name.toLowerCase() === destFolderCleanName.toLowerCase());\n\nif (!destFolderItem) {\n  throw new Error(`Destination folder \"${destFolderCleanName}\" not found.`);\n}\n\n// Return fileId and destination folderId for DriveMove node\nreturn [{\n  json: {\n    fileId: fileItem.id,\n    destFolderId: destFolderItem.id,\n    sourceFileName,\n    destFolderName: destFolderCleanName,\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        384
+      ],
+      "id": "0a7fa88a-2266-4c64-abcf-7d3e4a0d187d",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$json[\"field\"]}}",
+          "mode": "id"
+        },
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{$json[\"destFolderId\"]}}",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1184,
+        384
+      ],
+      "id": "d859c7a4-7c9f-4f0f-8997-4a592c0d0ffa",
+      "name": "Move file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "FKyamYCdk0mfStA2",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = items[0].json;\n\nconst fileName = item.sourceFileName || \"file\";\nconst destFolder = item.destFolderName || \"destination folder\";\n\nreturn [{\n  json: {\n    Body: `✅ Successfully moved \"${fileName}\" to folder \"${destFolder}\".`\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        384
+      ],
+      "id": "56f5965b-f328-44a5-a930-d29192602d9b",
+      "name": "SendResponse"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "ParseMessage": {
+      "main": [
+        [
+          {
+            "node": "SwitchCommand",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "DriveListDestFolder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook_WhatsApp_Incoming": {
+      "main": [
+        [
+          {
+            "node": "ParseMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SwitchCommand": {
+      "main": [
+        [
+          {
+            "node": "DriveList",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DriveList1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DriveListSource",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FormatList": {
+      "main": [
+        [
+          {
+            "node": "Twilio_SendMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DriveList": {
+      "main": [
+        [
+          {
+            "node": "FormatList",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twilio_SendMessage": {
+      "main": [
+        []
+      ]
+    },
+    "FindFileID": {
+      "main": [
+        [
+          {
+            "node": "DriveDelete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DriveDelete": {
+      "main": [
+        [
+          {
+            "node": "FormatDeleteResponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DriveList1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "FindFileID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DriveListSource": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DriveListDestFolder": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Move file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move file": {
+      "main": [
+        [
+          {
+            "node": "SendResponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "452b3934-2e95-4b4e-b8ce-10b6cd854ea2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6adbbe3826ebf882677f178ca2185a3fe40dbaa4a91beabe79342f588796ae97"
+  },
+  "id": "7wlvbUwCA30EziTe",
+  "tags": []
+}
